@@ -9,9 +9,23 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@tiptap/extension-color": "^3.10.7",
+    "@tiptap/extension-highlight": "^3.10.7",
+    "@tiptap/extension-task-item": "^3.10.7",
+    "@tiptap/extension-task-list": "^3.10.7",
+    "@tiptap/extension-text-style": "^3.10.7",
+    "@tiptap/react": "^3.10.7",
+    "@tiptap/starter-kit": "^3.10.7",
+    "dexie": "^4.2.1",
+    "dexie-react-hooks": "^4.2.0",
+    "idb": "^8.0.3",
+    "lucide-react": "^0.553.0",
     "next": "16.0.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
