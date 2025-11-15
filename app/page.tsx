@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useStore } from './store/useStore';
+import SignupFlow from './components/SignupFlow';
 import Sidebar from './components/Sidebar';
 import NoteEditor from './components/NoteEditor';
 import Whiteboard from './components/Whiteboard';
@@ -14,7 +15,12 @@ import { downloadNoteAsMarkdown, downloadNoteAsJSON, downloadFlashcardsAsJSON, d
 import type { FlashcardSet } from './store/useStore';
 
 export default function Home() {
-  const { currentNote, currentView, deleteNote, flashcardSets, sidebarOpen } = useStore();
+  const { user, currentNote, currentView, deleteNote, flashcardSets, sidebarOpen } = useStore();
+
+  // Show signup flow if user is not authenticated
+  if (!user) {
+    return <SignupFlow />;
+  }
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 

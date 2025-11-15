@@ -36,7 +36,16 @@ export interface FlashcardSet {
   cards: Flashcard[];
 }
 
+export interface User {
+  id: string;
+  email: string;
+  role: 'mentor' | 'mentee';
+  subjects: string[];
+  birthday: string;
+}
+
 interface AppState {
+  user: User | null;
   notes: Note[];
   flashcardSets: FlashcardSet[];
   folders: Folder[];
@@ -44,6 +53,10 @@ interface AppState {
   currentFolder: string | null;
   sidebarOpen: boolean;
   currentView: 'notes' | 'lecture-upload';
+
+  // User actions
+  setUser: (user: User) => void;
+  logout: () => void;
 
   // Actions
   addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'order'>) => void;
@@ -70,6 +83,7 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
+      user: null,
       notes: [],
       flashcardSets: [],
       folders: [],
@@ -77,6 +91,9 @@ export const useStore = create<AppState>()(
       currentFolder: null,
       sidebarOpen: true,
       currentView: 'notes' as 'notes' | 'lecture-upload',
+
+      setUser: (user) => set({ user }),
+      logout: () => set({ user: null }),
 
       addNote: (note) =>
         set((state) => {
