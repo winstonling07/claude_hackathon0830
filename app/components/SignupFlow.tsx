@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { LogIn, UserPlus, ArrowRight } from 'lucide-react';
 import SignupForm from './SignupForm';
+import LoginForm from './LoginForm';
 import RoleSelection from './RoleSelection';
 import SubjectSelection from './SubjectSelection';
 import { useStore } from '../store/useStore';
 
-type SignupStep = 'signup' | 'role' | 'subjects' | 'complete';
+type AuthStep = 'choice' | 'login' | 'signup' | 'role' | 'subjects' | 'complete';
 
 export default function SignupFlow() {
-  const [step, setStep] = useState<SignupStep>('signup');
+  const [step, setStep] = useState<AuthStep>('choice');
   const [userData, setUserData] = useState<{
     email: string;
     password: string;
@@ -27,6 +29,44 @@ export default function SignupFlow() {
   const handleRoleSelect = (selectedRole: 'mentor' | 'mentee') => {
     setRole(selectedRole);
     setStep('subjects');
+  };
+
+  const handleLoginComplete = async (loginData: { email: string; password: string }) => {
+    try {
+      // Login user via API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to sign in');
+      }
+
+      if (!result.success || !result.user) {
+        throw new Error(result.error || 'Sign in failed. Please try again.');
+      }
+      
+      // Save user to store and mark as authenticated
+      setUser({
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        subjects: result.user.subjects,
+        birthday: result.user.birthday,
+      });
+
+      setStep('complete');
+    } catch (error) {
+      console.error('Login error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to sign in. Please try again.');
+    }
   };
 
   const handleSubjectsComplete = async (selectedSubjects: string[]) => {
@@ -72,8 +112,64 @@ export default function SignupFlow() {
     }
   };
 
+  if (step === 'choice') {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
+        <div className="max-w-2xl w-full">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mb-4">
+              <h1 className="text-4xl font-bold text-white">S</h1>
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+              Welcome to SprintNotes
+            </h1>
+            <p className="text-lg text-gray-600">Your all-in-one study companion</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Sign In Card */}
+            <button
+              onClick={() => setStep('login')}
+              className="group relative p-8 bg-white rounded-2xl shadow-xl border-2 border-gray-200 hover:border-blue-500 transition-all text-left hover:shadow-2xl"
+            >
+              <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl mb-4 group-hover:scale-110 transition-transform">
+                <LogIn className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h2>
+              <p className="text-gray-600 mb-4">Welcome back! Sign in to continue your learning journey.</p>
+              <div className="flex items-center gap-2 text-blue-600 font-medium">
+                <span>Sign In</span>
+                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
+
+            {/* Create Account Card */}
+            <button
+              onClick={() => setStep('signup')}
+              className="group relative p-8 bg-white rounded-2xl shadow-xl border-2 border-gray-200 hover:border-purple-500 transition-all text-left hover:shadow-2xl"
+            >
+              <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl mb-4 group-hover:scale-110 transition-transform">
+                <UserPlus className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
+              <p className="text-gray-600 mb-4">Join our community and start your mentoring journey today.</p>
+              <div className="flex items-center gap-2 text-purple-600 font-medium">
+                <span>Sign Up</span>
+                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'login') {
+    return <LoginForm onComplete={handleLoginComplete} onSwitchToSignup={() => setStep('signup')} />;
+  }
+
   if (step === 'signup') {
-    return <SignupForm onComplete={handleSignupComplete} />;
+    return <SignupForm onComplete={handleSignupComplete} onSwitchToLogin={() => setStep('login')} />;
   }
 
   if (step === 'role') {

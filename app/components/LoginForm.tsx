@@ -1,36 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Lock, Calendar, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, LogIn } from 'lucide-react';
 
-interface SignupFormProps {
+interface LoginFormProps {
   onComplete: (userData: {
     email: string;
     password: string;
-    birthday: string;
   }) => void;
-  onSwitchToLogin?: () => void;
+  onSwitchToSignup: () => void;
 }
 
-export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormProps) {
+export default function LoginForm({ onComplete, onSwitchToSignup }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [birthday, setBirthday] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
-  const validateBirthday = (birthday: string) => {
-    const today = new Date();
-    const birthDate = new Date(birthday);
-    const age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
-    return actualAge >= 13 && actualAge <= 120; // Reasonable age range
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,22 +37,6 @@ export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormPr
     // Validate password
     if (!password) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-
-    // Validate password confirmation
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    // Validate birthday
-    if (!birthday) {
-      newErrors.birthday = 'Birthday is required';
-    } else if (!validateBirthday(birthday)) {
-      newErrors.birthday = 'You must be at least 13 years old to use this service';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -74,8 +46,8 @@ export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormPr
 
     setLoading(true);
     try {
-      // Call onComplete to proceed to next step
-      onComplete({ email, password, birthday });
+      // Call onComplete to proceed to login
+      onComplete({ email, password });
     } catch (error) {
       setErrors({ submit: 'An error occurred. Please try again.' });
     } finally {
@@ -88,10 +60,10 @@ export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormPr
       <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mb-4">
-            <Mail className="h-8 w-8 text-white" />
+            <LogIn className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h1>
-          <p className="text-gray-600">Join our mentoring community and start your learning journey</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to continue your learning journey</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -138,67 +110,13 @@ export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormPr
                     ? 'border-red-300 focus:ring-red-500'
                     : 'border-gray-300 focus:ring-blue-500'
                 }`}
-                placeholder="At least 8 characters"
+                placeholder="Enter your password"
               />
             </div>
             {errors.password && (
               <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
                 <AlertCircle className="h-4 w-4" />
                 {errors.password}
-              </p>
-            )}
-          </div>
-
-          {/* Confirm Password Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.confirmPassword
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                }`}
-                placeholder="Re-enter your password"
-              />
-            </div>
-            {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                {errors.confirmPassword}
-              </p>
-            )}
-          </div>
-
-          {/* Birthday Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Birthday
-            </label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                max={new Date(new Date().setFullYear(new Date().getFullYear() - 13)).toISOString().split('T')[0]}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.birthday
-                    ? 'border-red-300 focus:ring-red-500'
-                    : 'border-gray-300 focus:ring-blue-500'
-                }`}
-              />
-            </div>
-            {errors.birthday && (
-              <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                {errors.birthday}
               </p>
             )}
           </div>
@@ -218,10 +136,10 @@ export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormPr
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             {loading ? (
-              'Creating Account...'
+              'Signing In...'
             ) : (
               <>
-                Continue
+                Sign In
                 <ArrowRight className="h-5 w-5" />
               </>
             )}
@@ -229,24 +147,14 @@ export default function SignupForm({ onComplete, onSwitchToLogin }: SignupFormPr
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600 mb-2">
-            Already have an account?{' '}
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
             <button
-              type="button"
-              onClick={() => {
-                if (onSwitchToLogin) {
-                  onSwitchToLogin();
-                } else {
-                  window.location.reload();
-                }
-              }}
+              onClick={onSwitchToSignup}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              Sign In
+              Create Account
             </button>
-          </p>
-          <p className="text-xs text-gray-500">
-            By creating an account, you agree to our Terms of Service and Privacy Policy
           </p>
         </div>
       </div>
