@@ -12,6 +12,7 @@ import ShareModal from './components/ShareModal';
 import CanvasIntegration from './components/CanvasIntegration';
 import MatchingSystem from './components/MatchingSystem';
 import ChatInterface from './components/ChatInterface';
+import ProfileDropdown from './components/ProfileDropdown';
 import { Share2, Trash2, Download, ChevronDown } from 'lucide-react';
 import { downloadNoteAsMarkdown, downloadNoteAsJSON, downloadFlashcardsAsJSON, downloadFlashcardsAsCSV } from './utils/export';
 import type { FlashcardSet } from './store/useStore';
@@ -160,98 +161,105 @@ export default function Home() {
 
       {/* Main Content */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-0'}`}>
-        {currentNote && (
-          <div className="border-b border-gray-200 bg-white/80 backdrop-blur-xl px-6 py-3 flex items-center justify-end gap-2">
-            {/* Download Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-lg"
-              >
-                <Download className="h-4 w-4" />
-                <span>Download</span>
-                <ChevronDown className="h-3 w-3" />
-              </button>
+        {/* Top Bar with Profile */}
+        <div className="border-b border-gray-200 bg-white/80 backdrop-blur-xl px-6 py-3 flex items-center justify-between">
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            {currentNote && (
+              <>
+                {/* Download Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-lg"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
 
-              {showDownloadMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowDownloadMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-20">
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-100">
-                      {currentNote.type === 'flashcard-set' ? 'Export Flashcards' : 'Export Note'}
-                    </div>
+                  {showDownloadMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowDownloadMenu(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-20">
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase border-b border-gray-100">
+                          {currentNote.type === 'flashcard-set' ? 'Export Flashcards' : 'Export Note'}
+                        </div>
 
-                    {currentNote.type === 'flashcard-set' ? (
-                      <>
-                        <button
-                          onClick={() => handleDownload('flashcards-csv')}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
-                        >
-                          <Download className="h-4 w-4 text-green-600" />
-                          <div>
-                            <div className="font-medium">CSV Format</div>
-                            <div className="text-xs text-gray-500">Import into Anki, Quizlet</div>
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => handleDownload('flashcards-json')}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
-                        >
-                          <Download className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <div className="font-medium">JSON Format</div>
-                            <div className="text-xs text-gray-500">For backup & data export</div>
-                          </div>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleDownload('markdown')}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
-                        >
-                          <Download className="h-4 w-4 text-purple-600" />
-                          <div>
-                            <div className="font-medium">Markdown (.md)</div>
-                            <div className="text-xs text-gray-500">For Notion, Obsidian, etc.</div>
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => handleDownload('json')}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
-                        >
-                          <Download className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <div className="font-medium">JSON Format</div>
-                            <div className="text-xs text-gray-500">For backup & data export</div>
-                          </div>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+                        {currentNote.type === 'flashcard-set' ? (
+                          <>
+                            <button
+                              onClick={() => handleDownload('flashcards-csv')}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <Download className="h-4 w-4 text-green-600" />
+                              <div>
+                                <div className="font-medium">CSV Format</div>
+                                <div className="text-xs text-gray-500">Import into Anki, Quizlet</div>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => handleDownload('flashcards-json')}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <Download className="h-4 w-4 text-blue-600" />
+                              <div>
+                                <div className="font-medium">JSON Format</div>
+                                <div className="text-xs text-gray-500">For backup & data export</div>
+                              </div>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleDownload('markdown')}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <Download className="h-4 w-4 text-purple-600" />
+                              <div>
+                                <div className="font-medium">Markdown (.md)</div>
+                                <div className="text-xs text-gray-500">For Notion, Obsidian, etc.</div>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => handleDownload('json')}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <Download className="h-4 w-4 text-blue-600" />
+                              <div>
+                                <div className="font-medium">JSON Format</div>
+                                <div className="text-xs text-gray-500">For backup & data export</div>
+                              </div>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
 
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all shadow-lg"
-            >
-              <Share2 className="h-4 w-4" />
-              <span>Share</span>
-            </button>
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Delete</span>
-            </button>
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all shadow-lg"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span>Share</span>
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </button>
+              </>
+            )}
+            <ProfileDropdown />
           </div>
-        )}
+        </div>
 
         {currentView === 'lecture-upload' && <LectureUpload />}
         {currentView === 'matching' && <MatchingSystem />}
