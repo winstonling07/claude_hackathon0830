@@ -60,11 +60,18 @@ export default function LectureUpload() {
         body: formData,
       });
 
+      const transcribeData = await transcribeResponse.json();
+
       if (!transcribeResponse.ok) {
-        throw new Error('Failed to transcribe audio');
+        const errorMessage = transcribeData.error || 'Failed to transcribe audio';
+        throw new Error(errorMessage);
       }
 
-      const { transcript: newTranscript } = await transcribeResponse.json();
+      if (!transcribeData.transcript) {
+        throw new Error('No transcript received from server');
+      }
+
+      const { transcript: newTranscript } = transcribeData;
       setTranscript(newTranscript);
 
       // If transcribe only, stop here

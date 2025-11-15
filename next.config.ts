@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
-const nextConfig = {
-  devIndicators: false
-};
 
-module.exports = nextConfig;
+const nextConfig: NextConfig = {
+  devIndicators: false,
+};
 
 export default nextConfig;
