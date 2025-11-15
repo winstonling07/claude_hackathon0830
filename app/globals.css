@@ -55,6 +55,25 @@ body {
   background: #a1a1a1;
 }
 
+/* Hide Next.js/Vercel branding and dev indicators */
+[data-nextjs-toast],
+[data-nextjs-portal],
+#__next-build-watcher,
+iframe[src*="vercel"],
+a[href*="vercel"][target="_blank"],
+a[href*="nextjs.org"],
+div:has(> a[href*="vercel"]),
+div:has(> a[href*="nextjs.org"]),
+body > div:last-child[style*="position: fixed"],
+body > div:last-child[style*="bottom"],
+[class*="nextjs"],
+[class*="vercel"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Tiptap editor styling */
 .ProseMirror {
   outline: none;
