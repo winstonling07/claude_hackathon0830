@@ -107,7 +107,7 @@ export default function Home() {
   // Strictly check: user must be null, undefined, or invalid
   if (!user || !user.id || !user.email || !user.role || !Array.isArray(user.subjects) || !user.birthday) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
+      <div className="h-screen w-screen overflow-hidden">
         <SignupFlow />
       </div>
     );
@@ -148,7 +148,7 @@ export default function Home() {
   // Double check user is authenticated before rendering content
   if (!user || !user.id || !user.email || !user.role || !Array.isArray(user.subjects) || !user.birthday) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
+      <div className="h-screen w-screen overflow-hidden">
         <SignupFlow />
       </div>
     );

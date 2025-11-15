@@ -91,7 +91,7 @@ export default function SubjectSelection({ role, onComplete }: SubjectSelectionP
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 py-8">
+    <div className="h-screen w-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 py-8 overflow-y-auto">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mb-4">
