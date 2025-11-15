@@ -33,6 +33,7 @@ interface FolderTreeProps {
   onToggleExpand: (folderId: string) => void;
   onSetCurrentFolder: (folderId: string | null) => void;
   onSetCurrentNote: (note: Note) => void;
+  onDeleteNote: (noteId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onShowNewFolder: (parentId?: string) => void;
   getChildFolders: (parentId: string) => Folder[];
@@ -53,6 +54,7 @@ function FolderTree({
   onToggleExpand,
   onSetCurrentFolder,
   onSetCurrentNote,
+  onDeleteNote,
   onDeleteFolder,
   onShowNewFolder,
   getChildFolders,
@@ -80,10 +82,10 @@ function FolderTree({
             className={`group ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400 rounded-lg' : ''}`}
           >
             <div
-              className={`flex items-center gap-1 rounded-lg transition-all ${
+              className={`flex items-center gap-0 rounded-lg transition-all ${
                 currentFolder === folder.id ? 'bg-blue-50' : 'hover:bg-gray-50'
               }`}
-              style={{ paddingLeft: `${level * 16 + 12}px` }}
+              style={{ paddingLeft: `${level * 16}px` }}
             >
               {hasChildren && (
                 <button
@@ -97,49 +99,54 @@ function FolderTree({
                   )}
                 </button>
               )}
-              {!hasChildren && <div className="w-5" />}
+              {!hasChildren && <div className="w-4" />}
               
               <Draggable draggableId={`folder-${folder.id}`} index={0}>
                 {(provided, snapshot) => (
-                  <button
+                  <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    onClick={() => onSetCurrentFolder(folder.id)}
-                    className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm transition-all ${
+                    className={`flex-1 flex items-center justify-between min-w-0 ${
                       snapshot.isDragging ? 'opacity-50' : ''
                     }`}
                   >
-                    <FolderIcon className="h-4 w-4 flex-shrink-0" style={{ color: folder.color }} />
-                    <span className={currentFolder === folder.id ? 'text-blue-700 font-medium' : 'text-gray-700'}>
-                      {folder.name}
-                    </span>
-                    <span className="ml-auto text-xs text-gray-500">
-                      {folderNotes.length}
-                    </span>
-                  </button>
+                    <button
+                      {...provided.dragHandleProps}
+                      onClick={() => onSetCurrentFolder(folder.id)}
+                      className="flex items-center gap-2 pl-0 pr-2 py-2 text-sm transition-all min-w-0 flex-shrink"
+                    >
+                      <FolderIcon className="h-4 w-4 flex-shrink-0" style={{ color: folder.color }} />
+                      <span className={`truncate ${currentFolder === folder.id ? 'text-blue-700 font-medium' : 'text-gray-700'}`}>
+                        {folder.name}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0 py-2">
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        {folderNotes.length}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onShowNewFolder(folder.id);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition-all"
+                        title="Add subfolder"
+                      >
+                        <FolderPlus className="h-3 w-3 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteFolder(folder.id);
+                        }}
+                        className="p-1 hover:bg-red-100 rounded transition-all mr-2"
+                      >
+                        <Trash2 className="h-3 w-3 text-red-600" />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </Draggable>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onShowNewFolder(folder.id);
-                }}
-                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded transition-all mr-1"
-                title="Add subfolder"
-              >
-                <FolderPlus className="h-3 w-3 text-gray-600" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteFolder(folder.id);
-                }}
-                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-all mr-2"
-              >
-                <Trash2 className="h-3 w-3 text-red-600" />
-              </button>
             </div>
 
             {isExpanded && (
@@ -158,17 +165,18 @@ function FolderTree({
                     onToggleExpand={onToggleExpand}
                     onSetCurrentFolder={onSetCurrentFolder}
                     onSetCurrentNote={onSetCurrentNote}
+                    onDeleteNote={onDeleteNote}
                     onDeleteFolder={onDeleteFolder}
                     onShowNewFolder={onShowNewFolder}
                     getChildFolders={getChildFolders}
-                                    getNotesInFolder={getNotesInFolder}
-                                    searchQuery={searchQuery}
-                                    onReorderNote={onReorderNote}
-                                    isDraggingRef={isDraggingRef}
-                                  />
+                    getNotesInFolder={getNotesInFolder}
+                    searchQuery={searchQuery}
+                    onReorderNote={onReorderNote}
+                    isDraggingRef={isDraggingRef}
+                  />
                 ))}
 
-                {/* Notes in this folder */}
+                {/* Notes in this folder - All note types (notes, whiteboards, flashcard-sets) are draggable */}
                 <Droppable droppableId={`notes-${folder.id}`}>
                   {(provided, snapshot) => (
                     <div
@@ -182,30 +190,48 @@ function FolderTree({
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className={`mb-1 ${snapshot.isDragging ? 'opacity-50' : ''}`}
+                              className={`mb-1 group ${snapshot.isDragging ? 'opacity-50' : ''}`}
                               style={{ paddingLeft: `${(level + 1) * 16 + 12}px` }}
                             >
-                              <button
-                                {...provided.dragHandleProps}
-                                onClick={(e) => {
-                                  // Only select if not dragging
-                                  if (!isDraggingRef.current && !snapshot.isDragging) {
-                                    onSetCurrentNote(note);
-                                  }
-                                }}
-                                className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
-                                  currentNote?.id === note.id
-                                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                                    : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
-                                } ${snapshot.isDragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'}`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  {note.type === 'note' && <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />}
-                                  {note.type === 'whiteboard' && <PenTool className="h-3 w-3 mt-0.5 flex-shrink-0" />}
-                                  {note.type === 'flashcard-set' && <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />}
-                                  <span className="text-xs truncate">{note.title}</span>
-                                </div>
-                              </button>
+                              <div className={`flex items-center gap-1 rounded-lg transition-all ${
+                                currentNote?.id === note.id
+                                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg'
+                                  : ''
+                              }`}>
+                                <button
+                                  {...provided.dragHandleProps}
+                                  onClick={(e) => {
+                                    // Only select if not dragging
+                                    if (!isDraggingRef.current && !snapshot.isDragging) {
+                                      onSetCurrentNote(note);
+                                    }
+                                  }}
+                                  className={`flex-1 text-left p-2 rounded-lg transition-all text-sm ${
+                                    currentNote?.id === note.id
+                                      ? 'text-white shadow-lg'
+                                      : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
+                                  } ${snapshot.isDragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'}`}
+                                >
+                                  <div className="flex items-start gap-2">
+                                    {note.type === 'note' && <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                    {note.type === 'whiteboard' && <PenTool className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                    {note.type === 'flashcard-set' && <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                    <span className="text-xs truncate">{note.title}</span>
+                                  </div>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm('Are you sure you want to delete this note?')) {
+                                      onDeleteNote(note.id);
+                                    }
+                                  }}
+                                  className="p-1 hover:bg-red-100 rounded transition-all mr-2"
+                                  title="Delete note"
+                                >
+                                  <Trash2 className="h-3 w-3 text-red-600" />
+                                </button>
+                              </div>
                             </div>
                           )}
                         </Draggable>
@@ -226,7 +252,7 @@ function FolderTree({
 }
 
 export default function Sidebar() {
-  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote } = useStore();
+  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, deleteNote, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -234,18 +260,13 @@ export default function Sidebar() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const isDraggingRef = useRef(false);
 
-  // Auto-expand root if there are root notes
-  useEffect(() => {
-    const hasRootNotes = notes.some(n => !n.folderId);
-    if (hasRootNotes && !expandedFolders.has('root')) {
-      setExpandedFolders((prev) => new Set(prev).add('root'));
-    }
-  }, [notes, expandedFolders]);
-
   const filteredNotes = notes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (note.description?.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesFolder = currentFolder === null || note.folderId === currentFolder;
+    // When no folder is selected, show root-level notes. When a folder is selected, show only notes in that folder
+    const matchesFolder = currentFolder === null 
+      ? note.folderId === undefined 
+      : note.folderId === currentFolder;
     return matchesSearch && matchesFolder;
   });
 
@@ -303,8 +324,8 @@ export default function Sidebar() {
     if (draggableId.startsWith('folder-')) {
       const folderId = draggableId.replace('folder-', '');
       let newParentId: string | undefined;
-      if (destination.droppableId === 'all-notes') {
-        newParentId = undefined;
+      if (destination.droppableId === 'notes-list') {
+        newParentId = undefined; // Dropping on root level
       } else if (destination.droppableId.startsWith('folder-')) {
         newParentId = destination.droppableId.replace('folder-', '');
       } else {
@@ -321,7 +342,8 @@ export default function Sidebar() {
     let newFolderId: string | undefined;
     let newIndex = destination.index;
 
-    if (destination.droppableId === 'all-notes' || destination.droppableId === 'notes-list') {
+    if (destination.droppableId === 'notes-list') {
+      // Dropped in root-level notes list
       newFolderId = undefined;
     } else if (destination.droppableId.startsWith('folder-')) {
       // Dropped on folder itself
@@ -349,7 +371,10 @@ export default function Sidebar() {
       type,
       tags: [],
       sharedWith: [],
+      folderId: undefined, // Always create at root level by default
     };
+    // Clear current folder so new notes appear at root
+    setCurrentFolder(null);
     addNote(newNote);
   };
 
@@ -460,47 +485,9 @@ export default function Sidebar() {
           </div>
         )}
 
-        <div>
-          <Droppable droppableId="all-notes">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
-                <div className="flex items-center gap-2">
-                  {rootNotes.length > 0 && (
-                    <button
-                      onClick={() => toggleFolderExpansion('root')}
-                      className="p-1 hover:bg-gray-200 rounded transition-all"
-                    >
-                      {expandedFolders.has('root') ? (
-                        <ChevronDown className="h-3 w-3 text-gray-600" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3 text-gray-600" />
-                      )}
-                    </button>
-                  )}
-                  {rootNotes.length === 0 && <div className="w-5" />}
-                  <button
-                    onClick={() => setCurrentFolder(null)}
-                    className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                      currentFolder === null
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    } ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
-                  >
-                    <FolderIcon className="h-4 w-4" />
-                    <span>All Notes</span>
-                    <span className="ml-auto text-xs text-gray-500">{notes.length}</span>
-                  </button>
-                </div>
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-          
-          {/* Root-level notes */}
-          {expandedFolders.has('root') && rootNotes.length > 0 && (
+        {/* Root-level notes - shown directly without folder */}
+        {rootNotes.length > 0 && (
+          <div className="mb-3">
             <Droppable droppableId="notes-list">
               {(provided, snapshot) => {
                 const filteredRootNotes = rootNotes.filter(note => {
@@ -512,7 +499,7 @@ export default function Sidebar() {
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`ml-4 mt-1 ${snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-1' : ''}`}
+                    className={`space-y-1 ${snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-1' : ''}`}
                   >
                     {filteredRootNotes.map((note, index) => (
                       <Draggable key={note.id} draggableId={note.id} index={index}>
@@ -520,30 +507,48 @@ export default function Sidebar() {
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`mb-1 ${snapshot.isDragging ? 'opacity-50' : ''}`}
-                            style={{ paddingLeft: '12px' }}
+                            className={`group ${snapshot.isDragging ? 'opacity-50' : ''}`}
                           >
-                            <button
-                              {...provided.dragHandleProps}
-                              onClick={(e) => {
-                                // Only select if not dragging
-                                if (!isDraggingRef.current && !snapshot.isDragging) {
-                                  setCurrentNote(note);
-                                }
-                              }}
-                              className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
-                                currentNote?.id === note.id
-                                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                                  : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
-                              } ${snapshot.isDragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'}`}
-                            >
-                              <div className="flex items-start gap-2">
-                                {note.type === 'note' && <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />}
-                                {note.type === 'whiteboard' && <PenTool className="h-3 w-3 mt-0.5 flex-shrink-0" />}
-                                {note.type === 'flashcard-set' && <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />}
-                                <span className="text-xs truncate">{note.title}</span>
-                              </div>
-                            </button>
+                            <div className={`flex items-center gap-1 rounded-lg transition-all ${
+                              currentNote?.id === note.id
+                                ? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg'
+                                : ''
+                            }`}>
+                              <button
+                                {...provided.dragHandleProps}
+                                onClick={(e) => {
+                                  // Only select if not dragging
+                                  if (!isDraggingRef.current && !snapshot.isDragging) {
+                                    setCurrentNote(note);
+                                    setCurrentFolder(null);
+                                  }
+                                }}
+                                className={`flex-1 text-left p-2 rounded-lg transition-all text-sm ${
+                                  currentNote?.id === note.id
+                                    ? 'text-white shadow-lg'
+                                    : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
+                                } ${snapshot.isDragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'}`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  {note.type === 'note' && <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                  {note.type === 'whiteboard' && <PenTool className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                  {note.type === 'flashcard-set' && <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                  <span className="text-xs truncate">{note.title}</span>
+                                </div>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm('Are you sure you want to delete this note?')) {
+                                    deleteNote(note.id);
+                                  }
+                                }}
+                                className="p-1 hover:bg-red-100 rounded transition-all mr-2"
+                                title="Delete note"
+                              >
+                                <Trash2 className="h-3 w-3 text-red-600" />
+                              </button>
+                            </div>
                           </div>
                         )}
                       </Draggable>
@@ -553,8 +558,8 @@ export default function Sidebar() {
                 );
               }}
             </Droppable>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Hierarchical Folder Tree */}
         <div className="space-y-1">
@@ -571,6 +576,7 @@ export default function Sidebar() {
               onToggleExpand={toggleFolderExpansion}
               onSetCurrentFolder={setCurrentFolder}
               onSetCurrentNote={setCurrentNote}
+              onDeleteNote={deleteNote}
               onDeleteFolder={deleteFolder}
               onShowNewFolder={(parentId) => {
                 setShowNewFolder(true);

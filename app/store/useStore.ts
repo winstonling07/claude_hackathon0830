@@ -80,7 +80,8 @@ export const useStore = create<AppState>()(
 
       addNote: (note) =>
         set((state) => {
-          const targetFolderId = state.currentFolder || note.folderId;
+          // Use explicit folderId from note if provided, otherwise use currentFolder if set, otherwise undefined (root level)
+          const targetFolderId = note.folderId !== undefined ? note.folderId : (state.currentFolder || undefined);
           const notesInFolder = state.notes.filter((n) => n.folderId === targetFolderId);
           const maxOrder = notesInFolder.reduce((max, n) => Math.max(max, n.order || 0), 0);
           
