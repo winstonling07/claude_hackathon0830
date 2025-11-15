@@ -147,6 +147,8 @@ function FolderTree({
                   </div>
                 )}
               </Draggable>
+              
+              {provided.placeholder}
             </div>
 
             {isExpanded && (
@@ -345,6 +347,7 @@ export default function Sidebar() {
     if (destination.droppableId === 'notes-list') {
       // Dropped in root-level notes list
       newFolderId = undefined;
+      newIndex = destination.index;
     } else if (destination.droppableId.startsWith('folder-')) {
       // Dropped on folder itself
       newFolderId = destination.droppableId.replace('folder-', '');
@@ -354,6 +357,8 @@ export default function Sidebar() {
     } else if (destination.droppableId.startsWith('notes-')) {
       // Dropped in notes list within a folder
       newFolderId = destination.droppableId.replace('notes-', '');
+      // Use the destination index for proper ordering
+      newIndex = destination.index;
       // Expand the target folder if it's collapsed
       setExpandedFolders((prev) => new Set(prev).add(newFolderId!));
     } else {

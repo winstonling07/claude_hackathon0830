@@ -10,7 +10,14 @@ export default function Whiteboard() {
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
+  const [title, setTitle] = useState('');
   const { currentNote, updateNote } = useStore();
+
+  useEffect(() => {
+    if (currentNote) {
+      setTitle(currentNote.title);
+    }
+  }, [currentNote]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,6 +43,13 @@ export default function Whiteboard() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
   }, [currentNote]);
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    if (currentNote) {
+      updateNote(currentNote.id, { title: newTitle });
+    }
+  };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -122,6 +136,22 @@ export default function Whiteboard() {
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50">
+      {/* Title Bar */}
+      <div className="border-b border-gray-200 bg-white/80 backdrop-blur-xl px-8 py-4">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={() => {
+            if (currentNote && title.trim()) {
+              updateNote(currentNote.id, { title: title.trim() });
+            }
+          }}
+          className="w-full text-2xl font-bold bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-gray-900 placeholder-gray-400"
+          placeholder="Untitled Whiteboard"
+        />
+      </div>
+
       {/* Toolbar */}
       <div className="border-b border-gray-200 bg-white/80 backdrop-blur-xl p-4">
         <div className="flex items-center gap-4 flex-wrap">
