@@ -91,8 +91,13 @@ export default function Home() {
   };
 
   // Show signup flow if user is not authenticated
+  // Block all access until user signs up/signs in
   if (!user) {
-    return <SignupFlow />;
+    return (
+      <div className="flex h-screen w-screen overflow-hidden">
+        <SignupFlow />
+      </div>
+    );
   }
 
   const handleDelete = () => {
@@ -287,7 +292,7 @@ export default function Home() {
         )}
       </div>
 
-      <CanvasIntegration />
+      {user && <CanvasIntegration />}
 
       {showShareModal && currentNote && (
         <ShareModal note={currentNote} onClose={() => setShowShareModal(false)} />

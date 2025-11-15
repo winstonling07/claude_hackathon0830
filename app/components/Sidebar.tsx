@@ -263,6 +263,11 @@ export default function Sidebar() {
   const [newFolderParentId, setNewFolderParentId] = useState<string | undefined>(undefined);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const isDraggingRef = useRef(false);
+  
+  // Don't render sidebar if user is not authenticated
+  if (!user) {
+    return null;
+  }
 
   const filteredNotes = notes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -404,6 +409,7 @@ export default function Sidebar() {
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => {
+              // Navigate to home view - clear current note and view
               setCurrentNote(null);
               setCurrentView('notes');
               setCurrentFolder(null);
