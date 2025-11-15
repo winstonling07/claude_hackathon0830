@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
-import { Send, MessageCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Send, MessageCircle, ArrowLeft, Loader2, Paperclip, X } from 'lucide-react';
+import CanvasCoursesModal from './CanvasCoursesModal';
 
 interface Message {
   id: string;
@@ -37,6 +38,8 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCanvasModal, setShowCanvasModal] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; url: string; type: 'assignment' | 'file' } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -116,19 +119,26 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !matchId || sending) return;
+    if ((!newMessage.trim() && !attachedFile) || !user || !matchId || sending) return;
 
     setSending(true);
     setError(null);
 
     try {
+      // Format message with attachment if present
+      let messageContent = newMessage.trim();
+      if (attachedFile) {
+        const fileLink = `[Canvas ${attachedFile.type === 'assignment' ? 'Assignment' : 'File'}: ${attachedFile.name}](${attachedFile.url})`;
+        messageContent = messageContent ? `${messageContent}\n\n${fileLink}` : fileLink;
+      }
+
       const response = await fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           matchId,
           senderId: user.id,
-          content: newMessage,
+          content: messageContent,
         }),
       });
 
@@ -138,6 +148,7 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
       }
 
       setNewMessage('');
+      setAttachedFile(null);
       // Reload messages to get the new one
       await loadMessages();
     } catch (err) {
@@ -145,6 +156,11 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSelectCanvasFile = (file: { name: string; url: string; type: 'assignment' | 'file' }) => {
+    setAttachedFile(file);
+    setShowCanvasModal(false);
   };
 
   if (!user) {
@@ -224,7 +240,34 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
                       : 'bg-white text-gray-900 border border-gray-200'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  <div className="text-sm whitespace-pre-wrap break-words">
+                    {message.content.split('\n').map((line, idx) => {
+                      // Check if line is a Canvas file link
+                      const linkMatch = line.match(/\[Canvas (Assignment|File): ([^\]]+)\]\(([^)]+)\)/);
+                      if (linkMatch) {
+                        const [, type, name, url] = linkMatch;
+                        return (
+                          <div key={idx} className={`mt-2 p-2 rounded border ${
+                            isOwn 
+                              ? 'bg-white/20 border-white/30' 
+                              : 'bg-blue-50 border-blue-200'
+                          }`}>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`text-sm font-medium underline hover:no-underline ${
+                                isOwn ? 'text-white' : 'text-blue-700'
+                              }`}
+                            >
+                              📎 {name} ({type})
+                            </a>
+                          </div>
+                        );
+                      }
+                      return line ? <p key={idx}>{line}</p> : <br key={idx} />;
+                    })}
+                  </div>
                   <p
                     className={`text-xs mt-1 ${
                       isOwn ? 'text-blue-100' : 'text-gray-500'
@@ -245,7 +288,32 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
 
       {/* Input */}
       <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-4 bg-white">
+        {attachedFile && (
+          <div className="mb-2 p-2 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Paperclip className="h-4 w-4 text-orange-600" />
+              <span className="text-sm text-orange-900 font-medium">{attachedFile.name}</span>
+              <span className="text-xs text-orange-600">({attachedFile.type})</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAttachedFile(null)}
+              className="p-1 hover:bg-orange-100 rounded transition-colors"
+            >
+              <X className="h-4 w-4 text-orange-600" />
+            </button>
+          </div>
+        )}
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCanvasModal(true)}
+            disabled={sending || match.status !== 'accepted'}
+            className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title="Attach Canvas file"
+          >
+            <Paperclip className="h-5 w-5 text-gray-600" />
+          </button>
           <input
             type="text"
             value={newMessage}
@@ -256,7 +324,7 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
           />
           <button
             type="submit"
-            disabled={!newMessage.trim() || sending || match.status !== 'accepted'}
+            disabled={(!newMessage.trim() && !attachedFile) || sending || match.status !== 'accepted'}
             className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {sending ? (
@@ -272,6 +340,13 @@ export default function ChatInterface({ matchId, onClose }: ChatInterfaceProps) 
           </p>
         )}
       </form>
+
+      {/* Canvas Courses Modal */}
+      <CanvasCoursesModal
+        isOpen={showCanvasModal}
+        onClose={() => setShowCanvasModal(false)}
+        onSelectFile={handleSelectCanvasFile}
+      />
     </div>
   );
 }

@@ -18,11 +18,13 @@ import {
   Trash2,
   Languages,
   Users,
-  MessageCircle
+  MessageCircle,
+  GraduationCap
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import type { Folder, Note } from '../store/useStore';
+import CanvasCoursesModal from './CanvasCoursesModal';
 
 interface FolderTreeProps {
   folder: Folder;
@@ -262,6 +264,7 @@ export default function Sidebar() {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderParentId, setNewFolderParentId] = useState<string | undefined>(undefined);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [showCanvasModal, setShowCanvasModal] = useState(false);
   const isDraggingRef = useRef(false);
   
   // Don't render sidebar if user is not authenticated
@@ -524,7 +527,21 @@ export default function Sidebar() {
             <span>Mentoring</span>
           </button>
         )}
+
+        <button
+          onClick={() => setShowCanvasModal(true)}
+          className="w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium bg-orange-100 text-orange-700 hover:bg-orange-200"
+        >
+          <GraduationCap className="h-4 w-4" />
+          <span>Canvas Courses</span>
+        </button>
       </div>
+
+      {/* Canvas Courses Modal */}
+      <CanvasCoursesModal
+        isOpen={showCanvasModal}
+        onClose={() => setShowCanvasModal(false)}
+      />
 
       {/* Folders */}
       <div className="px-4 py-3 border-b border-gray-200">
