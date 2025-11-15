@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
 import SignupFlow from './components/SignupFlow';
 import Sidebar from './components/Sidebar';
@@ -34,6 +34,18 @@ export default function Home() {
   } = useStore();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  
+  // Validate user on mount - ensure user has all required fields
+  useEffect(() => {
+    if (user) {
+      // Check if user has all required fields (id, email, role, subjects, birthday)
+      const isValidUser = user.id && user.email && user.role && Array.isArray(user.subjects) && user.birthday;
+      if (!isValidUser) {
+        // Clear invalid user data
+        useStore.getState().logout();
+      }
+    }
+  }, [user]);
   
   // Helper functions to open or create notes
   const handleOpenOrCreate = (type: 'note' | 'whiteboard' | 'flashcard-set') => {
@@ -92,9 +104,10 @@ export default function Home() {
 
   // Show signup flow if user is not authenticated
   // Block all access until user signs up/signs in
-  if (!user) {
+  // Strictly check: user must be null, undefined, or invalid
+  if (!user || !user.id || !user.email || !user.role || !Array.isArray(user.subjects) || !user.birthday) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden">
+      <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
         <SignupFlow />
       </div>
     );
@@ -131,6 +144,15 @@ export default function Home() {
     }
     setShowDownloadMenu(false);
   };
+
+  // Double check user is authenticated before rendering content
+  if (!user || !user.id || !user.email || !user.role || !Array.isArray(user.subjects) || !user.birthday) {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-gray-50">
+        <SignupFlow />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">

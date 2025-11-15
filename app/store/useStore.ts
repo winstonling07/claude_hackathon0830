@@ -349,6 +349,27 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'sprintnotes-storage',
+      // Migrate: clear invalid user data
+      migrate: (persistedState: any, version: number) => {
+        if (persistedState?.user) {
+          // Validate user has all required fields
+          const user = persistedState.user;
+          const isValidUser = 
+            user && 
+            user.id && 
+            user.email && 
+            user.role && 
+            Array.isArray(user.subjects) && 
+            user.birthday;
+          
+          if (!isValidUser) {
+            // Clear invalid user data
+            persistedState.user = null;
+          }
+        }
+        return persistedState as AppState;
+      },
+      version: 1,
     }
   )
 );
