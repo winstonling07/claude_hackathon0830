@@ -16,7 +16,9 @@ import {
   FolderPlus,
   MoreVertical,
   Trash2,
-  Languages
+  Languages,
+  Users,
+  MessageCircle
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -254,7 +256,7 @@ function FolderTree({
 }
 
 export default function Sidebar() {
-  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, deleteNote, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote } = useStore();
+  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, deleteNote, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote, user, setCurrentChatMatchId } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -462,6 +464,23 @@ export default function Sidebar() {
           <Languages className="h-4 w-4" />
           <span>Upload Lecture</span>
         </button>
+
+        {user && (
+          <button
+            onClick={() => {
+              setCurrentView('matching');
+              setCurrentChatMatchId(null);
+            }}
+            className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+              currentView === 'matching' || currentView === 'chat'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            <span>Mentoring</span>
+          </button>
+        )}
       </div>
 
       {/* Folders */}

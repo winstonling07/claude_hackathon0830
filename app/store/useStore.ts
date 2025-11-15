@@ -52,7 +52,8 @@ interface AppState {
   currentNote: Note | null;
   currentFolder: string | null;
   sidebarOpen: boolean;
-  currentView: 'notes' | 'lecture-upload';
+  currentView: 'notes' | 'lecture-upload' | 'matching' | 'chat';
+  currentChatMatchId: string | null;
 
   // User actions
   setUser: (user: User) => void;
@@ -64,7 +65,8 @@ interface AppState {
   deleteNote: (id: string) => void;
   reorderNote: (noteId: string, newFolderId: string | undefined, newIndex: number) => void;
   setCurrentNote: (note: Note | null) => void;
-  setCurrentView: (view: 'notes' | 'lecture-upload') => void;
+  setCurrentView: (view: 'notes' | 'lecture-upload' | 'matching' | 'chat') => void;
+  setCurrentChatMatchId: (matchId: string | null) => void;
   toggleSidebar: () => void;
 
   // Folder actions
@@ -90,7 +92,8 @@ export const useStore = create<AppState>()(
       currentNote: null,
       currentFolder: null,
       sidebarOpen: true,
-      currentView: 'notes' as 'notes' | 'lecture-upload',
+      currentView: 'notes' as 'notes' | 'lecture-upload' | 'matching' | 'chat',
+      currentChatMatchId: null,
 
       setUser: (user) => set({ user }),
       logout: () => set({ user: null }),
@@ -168,7 +171,11 @@ export const useStore = create<AppState>()(
 
       setCurrentNote: (note) => set({ currentNote: note, currentView: 'notes' }),
 
-      setCurrentView: (view) => set({ currentView: view, currentNote: view === 'lecture-upload' ? null : undefined }),
+      setCurrentView: (view) => set({ 
+        currentView: view, 
+        currentNote: view === 'lecture-upload' || view === 'matching' || view === 'chat' ? null : undefined 
+      }),
+      setCurrentChatMatchId: (matchId) => set({ currentChatMatchId: matchId }),
 
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 

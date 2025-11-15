@@ -61,22 +61,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabase
+    const { data: existingUsers, error: checkError } = await supabase
       .from('users')
       .select('email')
       .eq('email', email.toLowerCase())
-      .single();
+      .limit(1);
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 is "not found" error, which is expected for new users
+    if (checkError) {
       console.error('Error checking existing user:', checkError);
       return NextResponse.json(
-        { error: 'Failed to check if user exists' },
+        { 
+          error: 'Failed to check if user exists',
+          details: process.env.NODE_ENV === 'development' ? checkError.message : undefined
+        },
         { status: 500 }
       );
     }
 
-    if (existingUser) {
+    if (existingUsers && existingUsers.length > 0) {
       return NextResponse.json(
         { error: 'An account with this email already exists' },
         { status: 409 }
@@ -138,6 +140,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Return user data (without password hash)
+    if (!newUser) {
+      return NextResponse.json(
+        { error: 'Failed to create account. User data not returned.' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       user: {

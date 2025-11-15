@@ -10,19 +10,21 @@ import FlashcardView from './components/FlashcardView';
 import LectureUpload from './components/LectureUpload';
 import ShareModal from './components/ShareModal';
 import CanvasIntegration from './components/CanvasIntegration';
+import MatchingSystem from './components/MatchingSystem';
+import ChatInterface from './components/ChatInterface';
 import { Share2, Trash2, Download, ChevronDown } from 'lucide-react';
 import { downloadNoteAsMarkdown, downloadNoteAsJSON, downloadFlashcardsAsJSON, downloadFlashcardsAsCSV } from './utils/export';
 import type { FlashcardSet } from './store/useStore';
 
 export default function Home() {
-  const { user, currentNote, currentView, deleteNote, flashcardSets, sidebarOpen } = useStore();
+  const { user, currentNote, currentView, currentChatMatchId, deleteNote, flashcardSets, sidebarOpen, setCurrentView, setCurrentChatMatchId } = useStore();
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   // Show signup flow if user is not authenticated
   if (!user) {
     return <SignupFlow />;
   }
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const handleDelete = () => {
     if (currentNote && confirm('Are you sure you want to delete this note?')) {
@@ -156,6 +158,16 @@ export default function Home() {
         )}
 
         {currentView === 'lecture-upload' && <LectureUpload />}
+        {currentView === 'matching' && <MatchingSystem />}
+        {currentView === 'chat' && currentChatMatchId && (
+          <ChatInterface 
+            matchId={currentChatMatchId} 
+            onClose={() => {
+              setCurrentView('matching');
+              setCurrentChatMatchId(null);
+            }}
+          />
+        )}
 
         {currentView === 'notes' && currentNote?.type === 'note' && <NoteEditor />}
         {currentView === 'notes' && currentNote?.type === 'whiteboard' && <Whiteboard />}
