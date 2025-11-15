@@ -256,7 +256,7 @@ function FolderTree({
 }
 
 export default function Sidebar() {
-  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, deleteNote, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote, user, setCurrentChatMatchId } = useStore();
+  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, deleteNote, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote, user, setCurrentChatMatchId, lastVisited, isAllNotesExpanded, toggleAllNotesExpanded } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -402,9 +402,16 @@ export default function Sidebar() {
         {/* Header */}
       <div className="p-6 border-b border-gray-200 bg-white/80 backdrop-blur-xl">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <button
+            onClick={() => {
+              setCurrentNote(null);
+              setCurrentView('notes');
+              setCurrentFolder(null);
+            }}
+            className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity cursor-pointer"
+          >
             SprintNotes
-          </h1>
+          </button>
           <button
             onClick={toggleSidebar}
             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -429,7 +436,17 @@ export default function Sidebar() {
       {/* Create Buttons */}
       <div className="p-4 space-y-2 border-b border-gray-200">
         <button
-          onClick={() => createNewNote('note')}
+          onClick={() => {
+            // Check if there's a last visited note
+            if (lastVisited.note) {
+              const lastNote = notes.find((n) => n.id === lastVisited.note && n.type === 'note');
+              if (lastNote) {
+                setCurrentNote(lastNote);
+                return;
+              }
+            }
+            createNewNote('note');
+          }}
           className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30"
         >
           <Plus className="h-5 w-5" />
@@ -438,14 +455,34 @@ export default function Sidebar() {
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => createNewNote('whiteboard')}
+            onClick={() => {
+              // Check if there's a last visited whiteboard
+              if (lastVisited.whiteboard) {
+                const lastWhiteboard = notes.find((n) => n.id === lastVisited.whiteboard && n.type === 'whiteboard');
+                if (lastWhiteboard) {
+                  setCurrentNote(lastWhiteboard);
+                  return;
+                }
+              }
+              createNewNote('whiteboard');
+            }}
             className="flex items-center gap-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all text-sm font-medium"
           >
             <PenTool className="h-4 w-4" />
             <span>Whiteboard</span>
           </button>
           <button
-            onClick={() => createNewNote('flashcard-set')}
+            onClick={() => {
+              // Check if there's a last visited flashcard set
+              if (lastVisited.flashcardSet) {
+                const lastFlashcardSet = notes.find((n) => n.id === lastVisited.flashcardSet && n.type === 'flashcard-set');
+                if (lastFlashcardSet) {
+                  setCurrentNote(lastFlashcardSet);
+                  return;
+                }
+              }
+              createNewNote('flashcard-set');
+            }}
             className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all text-sm font-medium"
           >
             <BookOpen className="h-4 w-4" />
@@ -509,9 +546,24 @@ export default function Sidebar() {
           </div>
         )}
 
+        {/* All Notes Section */}
+        <div className="px-4 py-2 border-b border-gray-200">
+          <button
+            onClick={toggleAllNotesExpanded}
+            className="flex items-center justify-between w-full text-xs font-semibold text-gray-500 uppercase hover:text-gray-700 transition-colors"
+          >
+            <span>All Notes</span>
+            {isAllNotesExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
         {/* Root-level notes - shown directly without folder */}
-        {rootNotes.length > 0 && (
-          <div className="mb-3">
+        {rootNotes.length > 0 && isAllNotesExpanded && (
+          <div className="mb-3 px-4">
             <Droppable droppableId="notes-list">
               {(provided, snapshot) => {
                 const filteredRootNotes = rootNotes.filter(note => {

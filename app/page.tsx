@@ -17,9 +17,78 @@ import { downloadNoteAsMarkdown, downloadNoteAsJSON, downloadFlashcardsAsJSON, d
 import type { FlashcardSet } from './store/useStore';
 
 export default function Home() {
-  const { user, currentNote, currentView, currentChatMatchId, deleteNote, flashcardSets, sidebarOpen, setCurrentView, setCurrentChatMatchId } = useStore();
+  const { 
+    user, 
+    currentNote, 
+    currentView, 
+    currentChatMatchId, 
+    deleteNote, 
+    flashcardSets, 
+    sidebarOpen, 
+    setCurrentView, 
+    setCurrentChatMatchId,
+    notes,
+    addNote,
+    setCurrentNote,
+    lastVisited,
+  } = useStore();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  
+  // Helper functions to open or create notes
+  const handleOpenOrCreate = (type: 'note' | 'whiteboard' | 'flashcard-set') => {
+    const lastId = type === 'note' ? lastVisited.note 
+      : type === 'whiteboard' ? lastVisited.whiteboard 
+      : lastVisited.flashcardSet;
+    
+    if (lastId) {
+      const lastNote = notes.find((n) => n.id === lastId && n.type === type);
+      if (lastNote) {
+        setCurrentNote(lastNote);
+        return;
+      }
+    }
+    
+    // Create a new note/whiteboard/flashcard-set
+    const newNote = {
+      title: type === 'note' ? 'Untitled Note' 
+        : type === 'whiteboard' ? 'Untitled Whiteboard'
+        : 'Untitled Flashcard Set',
+      content: type === 'note' ? '<p>Start typing your notes...</p>' : '',
+      type: type,
+      tags: [],
+      sharedWith: [],
+    };
+    
+    addNote(newNote);
+    
+    // Find and open the newly created note
+    setTimeout(() => {
+      const state = useStore.getState();
+      const createdNote = state.notes.find(
+        (n) => n.title === newNote.title && n.type === type && n.content === newNote.content
+      );
+      if (createdNote) {
+        setCurrentNote(createdNote);
+      }
+    }, 100);
+  };
+  
+  const handleOpenAISummary = () => {
+    // Find the most recent note to summarize
+    const recentNote = notes
+      .filter((n) => n.type === 'note')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+    
+    if (recentNote) {
+      setCurrentNote(recentNote);
+      // In a real implementation, you might want to show an AI summary modal
+      // For now, just open the note
+    } else {
+      // Create a new note if none exist
+      handleOpenOrCreate('note');
+    }
+  };
 
   // Show signup flow if user is not authenticated
   if (!user) {
@@ -184,22 +253,34 @@ export default function Home() {
                 Your all-in-one study companion with AI-powered lecture translation, offline sync, and mentor connections.
               </p>
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
-                <div className="bg-white rounded-lg p-4 shadow-lg">
+                <button
+                  onClick={() => handleOpenOrCreate('note')}
+                  className="bg-white rounded-lg p-4 shadow-lg hover:shadow-xl transition-all cursor-pointer text-left"
+                >
                   <div className="text-2xl mb-2">📝</div>
                   <div className="font-semibold">Rich Text Notes</div>
-                </div>
-                <div className="bg-white rounded-lg p-4 shadow-lg">
+                </button>
+                <button
+                  onClick={() => handleOpenOrCreate('whiteboard')}
+                  className="bg-white rounded-lg p-4 shadow-lg hover:shadow-xl transition-all cursor-pointer text-left"
+                >
                   <div className="text-2xl mb-2">🎨</div>
                   <div className="font-semibold">Whiteboard</div>
-                </div>
-                <div className="bg-white rounded-lg p-4 shadow-lg">
+                </button>
+                <button
+                  onClick={() => handleOpenOrCreate('flashcard-set')}
+                  className="bg-white rounded-lg p-4 shadow-lg hover:shadow-xl transition-all cursor-pointer text-left"
+                >
                   <div className="text-2xl mb-2">🃏</div>
                   <div className="font-semibold">Flashcards</div>
-                </div>
-                <div className="bg-white rounded-lg p-4 shadow-lg">
+                </button>
+                <button
+                  onClick={handleOpenAISummary}
+                  className="bg-white rounded-lg p-4 shadow-lg hover:shadow-xl transition-all cursor-pointer text-left"
+                >
                   <div className="text-2xl mb-2">🤖</div>
                   <div className="font-semibold">AI Summary</div>
-                </div>
+                </button>
               </div>
             </div>
           </div>

@@ -13,15 +13,64 @@ export default function ShareModal({ note, onClose }: ShareModalProps) {
   const { updateNote } = useStore();
   const [email, setEmail] = useState('');
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const shareLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/shared/${note.id}`;
 
-  const handleShare = () => {
-    if (email.trim()) {
-      updateNote(note.id, {
-        sharedWith: [...note.sharedWith, email],
+  const handleShare = async () => {
+    if (!email.trim()) return;
+
+    // Parse emails (comma-separated or line-separated)
+    const emailList = email
+      .split(/[,\n]/)
+      .map((e) => e.trim())
+      .filter((e) => e.length > 0);
+
+    if (emailList.length === 0) {
+      setError('Please enter at least one valid email address');
+      return;
+    }
+
+    setSending(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emails: emailList,
+          noteTitle: note.title,
+          noteLink: shareLink,
+          noteContent: note.content?.replace(/<[^>]*>/g, '').substring(0, 500), // Plain text, first 500 chars
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to share note');
+      }
+
+      // Update note's sharedWith list
+      updateNote(note.id, {
+        sharedWith: [...new Set([...note.sharedWith, ...emailList])],
+      });
+
+      setSuccess(data.message || `Note shared with ${emailList.length} recipient(s)`);
       setEmail('');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to share note');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -57,25 +106,44 @@ export default function ShareModal({ note, onClose }: ShareModalProps) {
           {/* Share via Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Share with email
+              Share with email (comma or line separated)
             </label>
             <div className="flex gap-2">
-              <input
-                type="email"
+              <textarea
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleShare()}
-                placeholder="colleague@university.edu"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="colleague1@university.edu, colleague2@university.edu"
+                rows={2}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
               <button
                 onClick={handleShare}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center gap-2"
+                disabled={sending || !email.trim()}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Mail className="h-4 w-4" />
-                <span>Share</span>
+                {sending ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4" />
+                    <span>Share</span>
+                  </>
+                )}
               </button>
             </div>
+            {error && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                {success}
+              </div>
+            )}
           </div>
 
           {/* Shared With */}

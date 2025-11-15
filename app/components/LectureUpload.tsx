@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Upload, FileAudio, Languages, BookOpen, Loader2, CheckCircle2, XCircle, Mic, FileText, Copy, Check } from 'lucide-react';
 import { db } from '../lib/db';
+import { useStore } from '../store/useStore';
 
 export default function LectureUpload() {
+  const { addNote, setCurrentNote, notes } = useStore();
   const [file, setFile] = useState<File | null>(null);
   const [originalLanguage, setOriginalLanguage] = useState('english');
   const [targetLanguage, setTargetLanguage] = useState('english');
@@ -73,6 +75,32 @@ export default function LectureUpload() {
 
       const { transcript: newTranscript } = transcribeData;
       setTranscript(newTranscript);
+
+      // Create a note from the transcript
+      const noteTitle = file.name.replace(/\.[^/.]+$/, '') || 'Untitled Lecture';
+      const newNote = {
+        title: noteTitle,
+        content: newTranscript,
+        type: 'note' as const,
+        tags: [],
+        sharedWith: [],
+      };
+      
+      addNote(newNote);
+      
+      // Find the newly created note and navigate to it
+      // The note will be created synchronously, so we can find it immediately
+      // Wait a tick for the store to update
+      setTimeout(() => {
+        const { notes: currentNotes } = useStore.getState();
+        // Find the most recently created note with matching title
+        const createdNote = currentNotes
+          .filter((n) => n.title === noteTitle && n.type === 'note')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        if (createdNote && createdNote.content === newTranscript) {
+          setCurrentNote(createdNote);
+        }
+      }, 100);
 
       // If transcribe only, stop here
       if (isTranscribeOnly) {

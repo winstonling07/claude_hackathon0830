@@ -156,6 +156,21 @@ export default function CanvasIntegration() {
     setError(null);
 
     try {
+      // Find or create "Canvas Imports" folder
+      const state = useStore.getState();
+      let canvasFolder = state.folders.find((f) => f.name === 'Canvas Imports');
+      
+      if (!canvasFolder) {
+        // Create the folder
+        const folderColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#EF4444'];
+        const randomColor = folderColors[Math.floor(Math.random() * folderColors.length)];
+        useStore.getState().addFolder('Canvas Imports', randomColor);
+        
+        // Get the newly created folder
+        const newState = useStore.getState();
+        canvasFolder = newState.folders.find((f) => f.name === 'Canvas Imports');
+      }
+
       // Create a note from the assignment
       addNote({
         title: assignment.name,
@@ -164,7 +179,7 @@ export default function CanvasIntegration() {
         type: 'note',
         tags: ['canvas', 'imported', selectedCourse?.code || ''],
         sharedWith: [],
-        folderId: undefined,
+        folderId: canvasFolder?.id,
       });
 
       alert(`Imported "${assignment.name}" as a new note!`);

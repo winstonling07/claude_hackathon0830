@@ -54,6 +54,12 @@ interface AppState {
   sidebarOpen: boolean;
   currentView: 'notes' | 'lecture-upload' | 'matching' | 'chat';
   currentChatMatchId: string | null;
+  lastVisited: {
+    note?: string;
+    whiteboard?: string;
+    flashcardSet?: string;
+  };
+  isAllNotesExpanded: boolean;
 
   // User actions
   setUser: (user: User) => void;
@@ -68,6 +74,8 @@ interface AppState {
   setCurrentView: (view: 'notes' | 'lecture-upload' | 'matching' | 'chat') => void;
   setCurrentChatMatchId: (matchId: string | null) => void;
   toggleSidebar: () => void;
+  setLastVisited: (type: 'note' | 'whiteboard' | 'flashcardSet', id: string) => void;
+  toggleAllNotesExpanded: () => void;
 
   // Folder actions
   addFolder: (name: string, color: string, parentId?: string) => void;
@@ -94,6 +102,8 @@ export const useStore = create<AppState>()(
       sidebarOpen: true,
       currentView: 'notes' as 'notes' | 'lecture-upload' | 'matching' | 'chat',
       currentChatMatchId: null,
+      lastVisited: {},
+      isAllNotesExpanded: true,
 
       setUser: (user) => set({ user }),
       logout: () => set({ user: null }),
@@ -164,12 +174,54 @@ export const useStore = create<AppState>()(
         }),
 
       deleteNote: (id) =>
-        set((state) => ({
-          notes: state.notes.filter((note) => note.id !== id),
-          currentNote: state.currentNote?.id === id ? null : state.currentNote,
-        })),
+        set((state) => {
+          const deletedNote = state.notes.find((n) => n.id === id);
+          const remainingNotes = state.notes.filter((note) => note.id !== id);
+          
+          // If we deleted the current note, find another note of the same type, or go home
+          let newCurrentNote = state.currentNote;
+          if (state.currentNote?.id === id) {
+            // Find another note of the same type
+            const sameTypeNote = remainingNotes.find((n) => n.type === state.currentNote?.type);
+            newCurrentNote = sameTypeNote || null;
+          }
+          
+          // Update lastVisited if we deleted the last visited note
+          let lastVisited = { ...state.lastVisited };
+          if (deletedNote) {
+            if (deletedNote.type === 'note' && lastVisited.note === id) {
+              const newLastNote = remainingNotes.find((n) => n.type === 'note');
+              lastVisited.note = newLastNote?.id;
+            } else if (deletedNote.type === 'whiteboard' && lastVisited.whiteboard === id) {
+              const newLastWhiteboard = remainingNotes.find((n) => n.type === 'whiteboard');
+              lastVisited.whiteboard = newLastWhiteboard?.id;
+            } else if (deletedNote.type === 'flashcard-set' && lastVisited.flashcardSet === id) {
+              const newLastFlashcardSet = remainingNotes.find((n) => n.type === 'flashcard-set');
+              lastVisited.flashcardSet = newLastFlashcardSet?.id;
+            }
+          }
+          
+          return {
+            notes: remainingNotes,
+            currentNote: newCurrentNote,
+            lastVisited,
+          };
+        }),
 
-      setCurrentNote: (note) => set({ currentNote: note, currentView: 'notes' }),
+      setCurrentNote: (note) =>
+        set((state) => {
+          let lastVisited = { ...state.lastVisited };
+          if (note) {
+            if (note.type === 'note') lastVisited.note = note.id;
+            else if (note.type === 'whiteboard') lastVisited.whiteboard = note.id;
+            else if (note.type === 'flashcard-set') lastVisited.flashcardSet = note.id;
+          }
+          return {
+            currentNote: note,
+            currentView: 'notes',
+            lastVisited,
+          };
+        }),
 
       setCurrentView: (view) => set({ 
         currentView: view, 
@@ -178,6 +230,12 @@ export const useStore = create<AppState>()(
       setCurrentChatMatchId: (matchId) => set({ currentChatMatchId: matchId }),
 
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      
+      setLastVisited: (type, id) => set((state) => ({
+        lastVisited: { ...state.lastVisited, [type]: id },
+      })),
+      
+      toggleAllNotesExpanded: () => set((state) => ({ isAllNotesExpanded: !state.isAllNotesExpanded })),
 
       addFolder: (name, color, parentId) =>
         set((state) => ({
