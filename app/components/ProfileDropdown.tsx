@@ -1,8 +1,59 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { User, Bell, Mail, Calendar, GraduationCap, BookOpen, X, Check, XCircle, LogOut } from 'lucide-react';
+import { User, Bell, Mail, Calendar, GraduationCap, BookOpen, X, Check, XCircle, LogOut, Edit2, Save, CheckCircle2, Book, Briefcase, Music, Code, Calculator, FlaskConical, Globe, Paintbrush, Dumbbell, Heart } from 'lucide-react';
 import { useStore } from '../store/useStore';
+
+const subjectCategories = [
+  {
+    name: 'Academic Subjects',
+    icon: Book,
+    subjects: [
+      { id: 'mathematics', label: 'Mathematics', icon: Calculator },
+      { id: 'science', label: 'Science', icon: FlaskConical },
+      { id: 'computer-science', label: 'Computer Science', icon: Code },
+      { id: 'languages', label: 'Languages', icon: Globe },
+      { id: 'history', label: 'History', icon: Book },
+      { id: 'literature', label: 'Literature', icon: Book },
+      { id: 'economics', label: 'Economics', icon: Book },
+      { id: 'psychology', label: 'Psychology', icon: Book },
+      { id: 'engineering', label: 'Engineering', icon: Calculator },
+      { id: 'medicine', label: 'Medicine', icon: Heart },
+    ],
+  },
+  {
+    name: 'Professional Development',
+    icon: Briefcase,
+    subjects: [
+      { id: 'career-guidance', label: 'Career Guidance', icon: Briefcase },
+      { id: 'resume-writing', label: 'Resume Writing', icon: Briefcase },
+      { id: 'interview-prep', label: 'Interview Preparation', icon: Briefcase },
+      { id: 'networking', label: 'Networking', icon: Briefcase },
+      { id: 'leadership', label: 'Leadership Skills', icon: Briefcase },
+      { id: 'public-speaking', label: 'Public Speaking', icon: Briefcase },
+    ],
+  },
+  {
+    name: 'Creative & Hobbies',
+    icon: Paintbrush,
+    subjects: [
+      { id: 'art', label: 'Art & Design', icon: Paintbrush },
+      { id: 'music', label: 'Music', icon: Music },
+      { id: 'writing', label: 'Creative Writing', icon: Book },
+      { id: 'photography', label: 'Photography', icon: Paintbrush },
+    ],
+  },
+  {
+    name: 'Wellness & Lifestyle',
+    icon: Heart,
+    subjects: [
+      { id: 'fitness', label: 'Fitness & Health', icon: Dumbbell },
+      { id: 'mindfulness', label: 'Mindfulness & Meditation', icon: Heart },
+      { id: 'time-management', label: 'Time Management', icon: Briefcase },
+      { id: 'study-skills', label: 'Study Skills', icon: Book },
+    ],
+  },
+];
 
 interface MatchRequest {
   id: string;
@@ -20,11 +71,14 @@ interface MatchRequest {
 }
 
 export default function ProfileDropdown() {
-  const { user, logout } = useStore();
+  const { user, logout, setUser } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'notifications'>('profile');
   const [notifications, setNotifications] = useState<MatchRequest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingSubjects, setEditingSubjects] = useState(false);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -50,6 +104,13 @@ export default function ProfileDropdown() {
       fetchNotifications();
     }
   }, [isOpen, activeTab, user]);
+
+  // Initialize selected subjects when entering edit mode
+  useEffect(() => {
+    if (editingSubjects && user) {
+      setSelectedSubjects(user.subjects || []);
+    }
+  }, [editingSubjects, user]);
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -116,6 +177,58 @@ export default function ProfileDropdown() {
     } catch (error) {
       console.error('Error rejecting match:', error);
       alert('Failed to reject match request');
+    }
+  };
+
+  const toggleSubject = (subjectId: string) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(subjectId)
+        ? prev.filter((id) => id !== subjectId)
+        : [...prev, subjectId]
+    );
+  };
+
+  const handleSaveSubjects = async () => {
+    if (!user) return;
+
+    if (selectedSubjects.length === 0) {
+      alert(`Please select at least one subject you're ${user.role === 'mentor' ? 'proficient in' : 'interested in learning'}.`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/auth/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          subjects: selectedSubjects,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update subjects');
+
+      const data = await response.json();
+      if (data.success && data.user) {
+        // Update user in store
+        setUser(data.user);
+        setEditingSubjects(false);
+      } else {
+        throw new Error(data.error || 'Failed to update subjects');
+      }
+    } catch (error) {
+      console.error('Error updating subjects:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update subjects');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSubjects(false);
+    if (user) {
+      setSelectedSubjects(user.subjects || []);
     }
   };
 
@@ -190,7 +303,7 @@ export default function ProfileDropdown() {
             </div>
 
             {/* Content */}
-            <div className="max-h-96 overflow-y-auto">
+            <div className={`overflow-y-auto ${editingSubjects ? 'max-h-[600px]' : 'max-h-96'}`}>
               {activeTab === 'profile' ? (
                 <div className="p-6 space-y-6">
                   {/* Profile Header */}
@@ -235,25 +348,108 @@ export default function ProfileDropdown() {
 
                   {/* Subjects */}
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-gray-500 uppercase">
-                      {user.role === 'mentor' ? 'Subjects You Teach' : 'Subjects You\'re Learning'}
-                    </label>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      {user.subjects && user.subjects.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {user.subjects.map((subject, index) => (
-                            <span
-                              key={index}
-                              className="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-medium rounded-full"
-                            >
-                              {subject.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No subjects selected</p>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-gray-500 uppercase">
+                        {user.role === 'mentor' ? 'Subjects You Teach' : 'Subjects You\'re Learning'}
+                      </label>
+                      {!editingSubjects && (
+                        <button
+                          onClick={() => setEditingSubjects(true)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                          Edit
+                        </button>
                       )}
                     </div>
+                    {editingSubjects ? (
+                      <div className="space-y-4 max-h-64 overflow-y-auto p-3 bg-gray-50 rounded-lg border border-blue-200">
+                        {subjectCategories.map((category) => {
+                          const CategoryIcon = category.icon;
+                          return (
+                            <div key={category.name} className="space-y-2">
+                              <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                                <CategoryIcon className="h-4 w-4 text-purple-600" />
+                                <h3 className="text-xs font-semibold text-gray-700">{category.name}</h3>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {category.subjects.map((subject) => {
+                                  const SubjectIcon = subject.icon;
+                                  const isSelected = selectedSubjects.includes(subject.id);
+                                  return (
+                                    <button
+                                      key={subject.id}
+                                      onClick={() => toggleSubject(subject.id)}
+                                      className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all text-left ${
+                                        isSelected
+                                          ? 'border-purple-500 bg-purple-50'
+                                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      <SubjectIcon
+                                        className={`h-4 w-4 ${isSelected ? 'text-purple-600' : 'text-gray-400'}`}
+                                      />
+                                      <span className={`text-xs font-medium flex-1 ${
+                                        isSelected ? 'text-purple-900' : 'text-gray-700'
+                                      }`}>
+                                        {subject.label}
+                                      </span>
+                                      {isSelected && (
+                                        <CheckCircle2 className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="flex gap-2 pt-2 border-t border-gray-200">
+                          <button
+                            onClick={handleSaveSubjects}
+                            disabled={saving || selectedSubjects.length === 0}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {saving ? (
+                              <>
+                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4" />
+                                Save
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            disabled={saving}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <X className="h-4 w-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        {user.subjects && user.subjects.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {user.subjects.map((subject, index) => (
+                              <span
+                                key={index}
+                                className="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-medium rounded-full"
+                              >
+                                {subject.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No subjects selected</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Logout Button */}
