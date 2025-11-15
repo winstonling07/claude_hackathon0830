@@ -5,6 +5,7 @@ export interface Folder {
   id: string;
   name: string;
   color: string;
+  parentId?: string;
   createdAt: Date;
 }
 
@@ -19,6 +20,7 @@ export interface Note {
   updatedAt: Date;
   tags: string[];
   sharedWith: string[];
+  order?: number;
 }
 
 export interface Flashcard {
@@ -44,18 +46,20 @@ interface AppState {
   currentView: 'notes' | 'lecture-upload';
 
   // Actions
-  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'order'>) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
+  reorderNote: (noteId: string, newFolderId: string | undefined, newIndex: number) => void;
   setCurrentNote: (note: Note | null) => void;
   setCurrentView: (view: 'notes' | 'lecture-upload') => void;
   toggleSidebar: () => void;
 
   // Folder actions
-  addFolder: (name: string, color: string) => void;
+  addFolder: (name: string, color: string, parentId?: string) => void;
   updateFolder: (id: string, updates: Partial<Folder>) => void;
   deleteFolder: (id: string) => void;
   setCurrentFolder: (folderId: string | null) => void;
+  moveFolder: (folderId: string, newParentId?: string) => void;
 
   // Flashcard actions
   addFlashcardSet: (noteId: string) => void;
@@ -75,18 +79,25 @@ export const useStore = create<AppState>()(
       currentView: 'notes' as 'notes' | 'lecture-upload',
 
       addNote: (note) =>
-        set((state) => ({
-          notes: [
-            ...state.notes,
-            {
-              ...note,
-              id: crypto.randomUUID(),
-              folderId: state.currentFolder || note.folderId,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-          ],
-        })),
+        set((state) => {
+          const targetFolderId = state.currentFolder || note.folderId;
+          const notesInFolder = state.notes.filter((n) => n.folderId === targetFolderId);
+          const maxOrder = notesInFolder.reduce((max, n) => Math.max(max, n.order || 0), 0);
+          
+          return {
+            notes: [
+              ...state.notes,
+              {
+                ...note,
+                id: crypto.randomUUID(),
+                folderId: targetFolderId,
+                order: maxOrder + 1,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          };
+        }),
 
       updateNote: (id, updates) =>
         set((state) => ({
@@ -96,6 +107,40 @@ export const useStore = create<AppState>()(
               : note
           ),
         })),
+
+      reorderNote: (noteId, newFolderId, newIndex) =>
+        set((state) => {
+          const note = state.notes.find((n) => n.id === noteId);
+          if (!note) return state;
+
+          // Get all notes in the target folder, excluding the note being moved
+          const targetFolderNotes = state.notes
+            .filter((n) => n.id !== noteId && n.folderId === newFolderId)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+          // Update the moved note's folder and order
+          const updatedNote = {
+            ...note,
+            folderId: newFolderId,
+            order: newIndex + 1,
+            updatedAt: new Date(),
+          };
+
+          // Reorder notes in the target folder
+          const reorderedTargetNotes = [...targetFolderNotes];
+          reorderedTargetNotes.splice(newIndex, 0, updatedNote);
+          const targetNotesWithOrders = reorderedTargetNotes.map((n, idx) => ({
+            ...n,
+            order: idx + 1,
+          }));
+
+          // Update all notes that changed
+          const updatedNotes = state.notes
+            .filter((n) => n.id !== noteId && n.folderId !== newFolderId)
+            .concat(targetNotesWithOrders);
+
+          return { notes: updatedNotes };
+        }),
 
       deleteNote: (id) =>
         set((state) => ({
@@ -109,7 +154,7 @@ export const useStore = create<AppState>()(
 
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
-      addFolder: (name, color) =>
+      addFolder: (name, color, parentId) =>
         set((state) => ({
           folders: [
             ...state.folders,
@@ -117,6 +162,7 @@ export const useStore = create<AppState>()(
               id: crypto.randomUUID(),
               name,
               color,
+              parentId,
               createdAt: new Date(),
             },
           ],
@@ -130,13 +176,50 @@ export const useStore = create<AppState>()(
         })),
 
       deleteFolder: (id) =>
-        set((state) => ({
-          folders: state.folders.filter((folder) => folder.id !== id),
-          notes: state.notes.map((note) =>
-            note.folderId === id ? { ...note, folderId: undefined } : note
-          ),
-          currentFolder: state.currentFolder === id ? null : state.currentFolder,
-        })),
+        set((state) => {
+          // Get all child folders recursively
+          const getChildFolderIds = (parentId: string): string[] => {
+            const directChildren = state.folders
+              .filter((f) => f.parentId === parentId)
+              .map((f) => f.id);
+            const allChildren = [...directChildren];
+            directChildren.forEach((childId) => {
+              allChildren.push(...getChildFolderIds(childId));
+            });
+            return allChildren;
+          };
+
+          const childFolderIds = getChildFolderIds(id);
+          const foldersToDelete = [id, ...childFolderIds];
+
+          return {
+            folders: state.folders.filter((folder) => !foldersToDelete.includes(folder.id)),
+            notes: state.notes.map((note) =>
+              foldersToDelete.includes(note.folderId || '') ? { ...note, folderId: undefined } : note
+            ),
+            currentFolder: foldersToDelete.includes(state.currentFolder || '') ? null : state.currentFolder,
+          };
+        }),
+
+      moveFolder: (folderId, newParentId) =>
+        set((state) => {
+          // Prevent moving a folder into itself or its children
+          const isDescendant = (parentId: string, childId: string): boolean => {
+            const children = state.folders.filter((f) => f.parentId === parentId);
+            if (children.some((c) => c.id === childId)) return true;
+            return children.some((c) => isDescendant(c.id, childId));
+          };
+
+          if (newParentId && isDescendant(folderId, newParentId)) {
+            return state; // Don't allow circular references
+          }
+
+          return {
+            folders: state.folders.map((folder) =>
+              folder.id === folderId ? { ...folder, parentId: newParentId } : folder
+            ),
+          };
+        }),
 
       setCurrentFolder: (folderId) => set({ currentFolder: folderId }),
 

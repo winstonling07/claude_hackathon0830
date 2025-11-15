@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, Download, Upload, Link as LinkIcon } from 'lucide-react';
+import { BookOpen, Download, Upload, Link as LinkIcon, X } from 'lucide-react';
 
 export default function CanvasIntegration() {
   const [canvasUrl, setCanvasUrl] = useState('');
   const [apiToken, setApiToken] = useState('');
   const [connected, setConnected] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const handleConnect = () => {
     // In a real implementation, this would connect to Canvas API
@@ -27,13 +28,26 @@ export default function CanvasIntegration() {
     alert('Importing from Canvas... (This is a demo feature)');
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <div className="fixed bottom-20 right-6 z-40">
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden w-80">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3 flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-white" />
-          <h3 className="font-semibold text-white">Canvas Integration</h3>
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-white" />
+            <h3 className="font-semibold text-white">Canvas Integration</h3>
+          </div>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="p-1 rounded-lg hover:bg-white/20 transition-colors"
+            aria-label="Close Canvas Integration"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
         </div>
 
         {/* Content */}

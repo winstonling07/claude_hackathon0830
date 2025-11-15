@@ -11,9 +11,10 @@ import ShareModal from './components/ShareModal';
 import CanvasIntegration from './components/CanvasIntegration';
 import { Share2, Trash2, Download, ChevronDown } from 'lucide-react';
 import { downloadNoteAsMarkdown, downloadNoteAsJSON, downloadFlashcardsAsJSON, downloadFlashcardsAsCSV } from './utils/export';
+import type { FlashcardSet } from './store/useStore';
 
 export default function Home() {
-  const { currentNote, currentView, deleteNote, flashcardSets } = useStore();
+  const { currentNote, currentView, deleteNote, flashcardSets, sidebarOpen } = useStore();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
@@ -34,13 +35,13 @@ export default function Home() {
         downloadNoteAsJSON(currentNote);
         break;
       case 'flashcards-json':
-        const flashcardSet = flashcardSets.find(set => set.noteId === currentNote.id);
+        const flashcardSet = flashcardSets.find((set: FlashcardSet) => set.noteId === currentNote.id);
         if (flashcardSet) {
           downloadFlashcardsAsJSON(flashcardSet, currentNote.title);
         }
         break;
       case 'flashcards-csv':
-        const set = flashcardSets.find(s => s.noteId === currentNote.id);
+        const set = flashcardSets.find((s: FlashcardSet) => s.noteId === currentNote.id);
         if (set) {
           downloadFlashcardsAsCSV(set.cards, currentNote.title);
         }
@@ -54,7 +55,7 @@ export default function Home() {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col ml-72">
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-72' : 'ml-0'}`}>
         {currentNote && (
           <div className="border-b border-gray-200 bg-white/80 backdrop-blur-xl px-6 py-3 flex items-center justify-end gap-2">
             {/* Download Dropdown */}

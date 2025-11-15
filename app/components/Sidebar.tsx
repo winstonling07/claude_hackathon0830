@@ -11,20 +11,236 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Folder as FolderIcon,
   FolderPlus,
   MoreVertical,
   Trash2,
   Languages
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import type { Folder, Note } from '../store/useStore';
+
+interface FolderTreeProps {
+  folder: Folder;
+  level: number;
+  folders: Folder[];
+  notes: Note[];
+  currentFolder: string | null;
+  currentNote: Note | null;
+  expandedFolders: Set<string>;
+  onToggleExpand: (folderId: string) => void;
+  onSetCurrentFolder: (folderId: string | null) => void;
+  onSetCurrentNote: (note: Note) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onShowNewFolder: (parentId?: string) => void;
+  getChildFolders: (parentId: string) => Folder[];
+  getNotesInFolder: (folderId: string | undefined) => Note[];
+  searchQuery: string;
+  onReorderNote: (noteId: string, newFolderId: string | undefined, newIndex: number) => void;
+  isDraggingRef: React.MutableRefObject<boolean>;
+}
+
+function FolderTree({
+  folder,
+  level,
+  folders,
+  notes,
+  currentFolder,
+  currentNote,
+  expandedFolders,
+  onToggleExpand,
+  onSetCurrentFolder,
+  onSetCurrentNote,
+  onDeleteFolder,
+  onShowNewFolder,
+  getChildFolders,
+  getNotesInFolder,
+  searchQuery,
+  onReorderNote,
+  isDraggingRef,
+}: FolderTreeProps) {
+  const childFolders = getChildFolders(folder.id);
+  const folderNotes = getNotesInFolder(folder.id).filter(note => {
+    if (!searchQuery) return true;
+    return note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (note.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+  });
+  const isExpanded = expandedFolders.has(folder.id);
+  const hasChildren = childFolders.length > 0 || folderNotes.length > 0;
+
+  return (
+    <>
+      <Droppable droppableId={`folder-${folder.id}`}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`group ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400 rounded-lg' : ''}`}
+          >
+            <div
+              className={`flex items-center gap-1 rounded-lg transition-all ${
+                currentFolder === folder.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+              }`}
+              style={{ paddingLeft: `${level * 16 + 12}px` }}
+            >
+              {hasChildren && (
+                <button
+                  onClick={() => onToggleExpand(folder.id)}
+                  className="p-1 hover:bg-gray-200 rounded transition-all"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3 text-gray-600" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-gray-600" />
+                  )}
+                </button>
+              )}
+              {!hasChildren && <div className="w-5" />}
+              
+              <Draggable draggableId={`folder-${folder.id}`} index={0}>
+                {(provided, snapshot) => (
+                  <button
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    onClick={() => onSetCurrentFolder(folder.id)}
+                    className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm transition-all ${
+                      snapshot.isDragging ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <FolderIcon className="h-4 w-4 flex-shrink-0" style={{ color: folder.color }} />
+                    <span className={currentFolder === folder.id ? 'text-blue-700 font-medium' : 'text-gray-700'}>
+                      {folder.name}
+                    </span>
+                    <span className="ml-auto text-xs text-gray-500">
+                      {folderNotes.length}
+                    </span>
+                  </button>
+                )}
+              </Draggable>
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowNewFolder(folder.id);
+                }}
+                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded transition-all mr-1"
+                title="Add subfolder"
+              >
+                <FolderPlus className="h-3 w-3 text-gray-600" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteFolder(folder.id);
+                }}
+                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-all mr-2"
+              >
+                <Trash2 className="h-3 w-3 text-red-600" />
+              </button>
+            </div>
+
+            {isExpanded && (
+              <div className="ml-4">
+                {/* Child Folders */}
+                {childFolders.map((childFolder) => (
+                  <FolderTree
+                    key={childFolder.id}
+                    folder={childFolder}
+                    level={level + 1}
+                    folders={folders}
+                    notes={notes}
+                    currentFolder={currentFolder}
+                    currentNote={currentNote}
+                    expandedFolders={expandedFolders}
+                    onToggleExpand={onToggleExpand}
+                    onSetCurrentFolder={onSetCurrentFolder}
+                    onSetCurrentNote={onSetCurrentNote}
+                    onDeleteFolder={onDeleteFolder}
+                    onShowNewFolder={onShowNewFolder}
+                    getChildFolders={getChildFolders}
+                                    getNotesInFolder={getNotesInFolder}
+                                    searchQuery={searchQuery}
+                                    onReorderNote={onReorderNote}
+                                    isDraggingRef={isDraggingRef}
+                                  />
+                ))}
+
+                {/* Notes in this folder */}
+                <Droppable droppableId={`notes-${folder.id}`}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-1' : ''}
+                    >
+                      {folderNotes.map((note, index) => (
+                        <Draggable key={note.id} draggableId={note.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`mb-1 ${snapshot.isDragging ? 'opacity-50' : ''}`}
+                              style={{ paddingLeft: `${(level + 1) * 16 + 12}px` }}
+                            >
+                              <button
+                                {...provided.dragHandleProps}
+                                onClick={(e) => {
+                                  // Only select if not dragging
+                                  if (!isDraggingRef.current && !snapshot.isDragging) {
+                                    onSetCurrentNote(note);
+                                  }
+                                }}
+                                className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
+                                  currentNote?.id === note.id
+                                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                                    : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
+                                } ${snapshot.isDragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'}`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  {note.type === 'note' && <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                  {note.type === 'whiteboard' && <PenTool className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                  {note.type === 'flashcard-set' && <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                  <span className="text-xs truncate">{note.title}</span>
+                                </div>
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            )}
+
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </>
+  );
+}
 
 export default function Sidebar() {
-  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote } = useStore();
+  const { notes, folders, sidebarOpen, currentFolder, currentView, toggleSidebar, addNote, addFolder, deleteFolder, moveFolder, setCurrentNote, setCurrentFolder, setCurrentView, currentNote, updateNote, reorderNote } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderParentId, setNewFolderParentId] = useState<string | undefined>(undefined);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const isDraggingRef = useRef(false);
+
+  // Auto-expand root if there are root notes
+  useEffect(() => {
+    const hasRootNotes = notes.some(n => !n.folderId);
+    if (hasRootNotes && !expandedFolders.has('root')) {
+      setExpandedFolders((prev) => new Set(prev).add('root'));
+    }
+  }, [notes, expandedFolders]);
 
   const filteredNotes = notes.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -33,40 +249,97 @@ export default function Sidebar() {
     return matchesSearch && matchesFolder;
   });
 
-  const folderColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#EF4444'];
+  // Build folder tree structure
+  const rootFolders = folders.filter((f) => !f.parentId);
+  const getChildFolders = (parentId: string) => folders.filter((f) => f.parentId === parentId);
+  const getNotesInFolder = (folderId: string | undefined) => {
+    const folderNotes = notes.filter((n) => n.folderId === folderId);
+    return folderNotes.sort((a, b) => (a.order || 0) - (b.order || 0));
+  };
+  const rootNotes = getNotesInFolder(undefined);
 
-  const handleCreateFolder = () => {
+  const toggleFolderExpansion = (folderId: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+
+  const handleCreateFolder = (parentId?: string) => {
     if (newFolderName.trim()) {
       const randomColor = folderColors[Math.floor(Math.random() * folderColors.length)];
-      addFolder(newFolderName, randomColor);
+      addFolder(newFolderName, randomColor, parentId);
       setNewFolderName('');
       setShowNewFolder(false);
+      setNewFolderParentId(undefined);
+      if (parentId) {
+        setExpandedFolders((prev) => new Set(prev).add(parentId));
+      }
     }
   };
 
+  const folderColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#EF4444'];
+
+
+  const handleDragStart = () => {
+    isDraggingRef.current = true;
+  };
+
   const handleDragEnd = (result: DropResult) => {
+    isDraggingRef.current = false;
     const { destination, source, draggableId } = result;
 
-    // No destination or dropped in same place
-    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
+    // No destination
+    if (!destination) {
+      return;
+    }
+
+    // Check if dragging a folder
+    if (draggableId.startsWith('folder-')) {
+      const folderId = draggableId.replace('folder-', '');
+      let newParentId: string | undefined;
+      if (destination.droppableId === 'all-notes') {
+        newParentId = undefined;
+      } else if (destination.droppableId.startsWith('folder-')) {
+        newParentId = destination.droppableId.replace('folder-', '');
+      } else {
+        return;
+      }
+      moveFolder(folderId, newParentId);
       return;
     }
 
     // Find the note being dragged
     const noteId = draggableId;
 
-    // Determine the new folder ID
+    // Determine the new folder ID and index
     let newFolderId: string | undefined;
-    if (destination.droppableId === 'all-notes') {
+    let newIndex = destination.index;
+
+    if (destination.droppableId === 'all-notes' || destination.droppableId === 'notes-list') {
       newFolderId = undefined;
     } else if (destination.droppableId.startsWith('folder-')) {
+      // Dropped on folder itself
       newFolderId = destination.droppableId.replace('folder-', '');
+      newIndex = 0; // Will be at top of folder
+      // Expand the target folder if it's collapsed
+      setExpandedFolders((prev) => new Set(prev).add(newFolderId!));
+    } else if (destination.droppableId.startsWith('notes-')) {
+      // Dropped in notes list within a folder
+      newFolderId = destination.droppableId.replace('notes-', '');
+      // Expand the target folder if it's collapsed
+      setExpandedFolders((prev) => new Set(prev).add(newFolderId!));
     } else {
       return; // Invalid destination
     }
 
-    // Update the note's folderId
-    updateNote(noteId, { folderId: newFolderId });
+    // Use reorderNote to handle the move and reordering
+    reorderNote(noteId, newFolderId, newIndex);
   };
 
   const createNewNote = (type: 'note' | 'whiteboard' | 'flashcard-set') => {
@@ -92,7 +365,7 @@ export default function Sidebar() {
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <aside className="fixed left-0 top-0 h-full w-72 bg-gradient-to-b from-gray-50 to-white border-r border-gray-200 flex flex-col shadow-xl z-40">
         {/* Header */}
       <div className="p-6 border-b border-gray-200 bg-white/80 backdrop-blur-xl">
@@ -179,7 +452,7 @@ export default function Sidebar() {
               type="text"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleCreateFolder()}
+              onKeyPress={(e) => e.key === 'Enter' && handleCreateFolder(newFolderParentId)}
               placeholder="Folder name..."
               className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
@@ -187,122 +460,132 @@ export default function Sidebar() {
           </div>
         )}
 
-        <Droppable droppableId="all-notes">
-          {(provided, snapshot) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              <button
-                onClick={() => setCurrentFolder(null)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                  currentFolder === null
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                } ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
-              >
-                <FolderIcon className="h-4 w-4" />
-                <span>All Notes</span>
-                <span className="ml-auto text-xs text-gray-500">{notes.length}</span>
-              </button>
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-
-        {folders.map((folder) => (
-          <Droppable key={folder.id} droppableId={`folder-${folder.id}`}>
+        <div>
+          <Droppable droppableId="all-notes">
             {(provided, snapshot) => (
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className={`flex items-center gap-2 rounded-lg transition-all group ${
-                  currentFolder === folder.id ? 'bg-blue-50' : 'hover:bg-gray-50'
-                } ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
               >
-                <button
-                  onClick={() => setCurrentFolder(folder.id)}
-                  className="flex-1 flex items-center gap-2 px-3 py-2 text-sm"
-                >
-                  <FolderIcon className="h-4 w-4" style={{ color: folder.color }} />
-                  <span className={currentFolder === folder.id ? 'text-blue-700 font-medium' : 'text-gray-700'}>
-                    {folder.name}
-                  </span>
-                  <span className="ml-auto text-xs text-gray-500">
-                    {notes.filter(n => n.folderId === folder.id).length}
-                  </span>
-                </button>
-                <button
-                  onClick={() => deleteFolder(folder.id)}
-                  className="p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-all mr-2"
-                >
-                  <Trash2 className="h-3 w-3 text-red-600" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {rootNotes.length > 0 && (
+                    <button
+                      onClick={() => toggleFolderExpansion('root')}
+                      className="p-1 hover:bg-gray-200 rounded transition-all"
+                    >
+                      {expandedFolders.has('root') ? (
+                        <ChevronDown className="h-3 w-3 text-gray-600" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 text-gray-600" />
+                      )}
+                    </button>
+                  )}
+                  {rootNotes.length === 0 && <div className="w-5" />}
+                  <button
+                    onClick={() => setCurrentFolder(null)}
+                    className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                      currentFolder === null
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    } ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400 bg-blue-50' : ''}`}
+                  >
+                    <FolderIcon className="h-4 w-4" />
+                    <span>All Notes</span>
+                    <span className="ml-auto text-xs text-gray-500">{notes.length}</span>
+                  </button>
+                </div>
                 {provided.placeholder}
               </div>
             )}
           </Droppable>
-        ))}
+          
+          {/* Root-level notes */}
+          {expandedFolders.has('root') && rootNotes.length > 0 && (
+            <Droppable droppableId="notes-list">
+              {(provided, snapshot) => {
+                const filteredRootNotes = rootNotes.filter(note => {
+                  if (!searchQuery) return true;
+                  return note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (note.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+                });
+                return (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`ml-4 mt-1 ${snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-1' : ''}`}
+                  >
+                    {filteredRootNotes.map((note, index) => (
+                      <Draggable key={note.id} draggableId={note.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`mb-1 ${snapshot.isDragging ? 'opacity-50' : ''}`}
+                            style={{ paddingLeft: '12px' }}
+                          >
+                            <button
+                              {...provided.dragHandleProps}
+                              onClick={(e) => {
+                                // Only select if not dragging
+                                if (!isDraggingRef.current && !snapshot.isDragging) {
+                                  setCurrentNote(note);
+                                }
+                              }}
+                              className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
+                                currentNote?.id === note.id
+                                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                                  : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
+                              } ${snapshot.isDragging ? 'shadow-lg cursor-grabbing' : 'cursor-grab'}`}
+                            >
+                              <div className="flex items-start gap-2">
+                                {note.type === 'note' && <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                {note.type === 'whiteboard' && <PenTool className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                {note.type === 'flashcard-set' && <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />}
+                                <span className="text-xs truncate">{note.title}</span>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                );
+              }}
+            </Droppable>
+          )}
+        </div>
+
+        {/* Hierarchical Folder Tree */}
+        <div className="space-y-1">
+          {rootFolders.map((folder) => (
+            <FolderTree
+              key={folder.id}
+              folder={folder}
+              level={0}
+              folders={folders}
+              notes={notes}
+              currentFolder={currentFolder}
+              currentNote={currentNote}
+              expandedFolders={expandedFolders}
+              onToggleExpand={toggleFolderExpansion}
+              onSetCurrentFolder={setCurrentFolder}
+              onSetCurrentNote={setCurrentNote}
+              onDeleteFolder={deleteFolder}
+              onShowNewFolder={(parentId) => {
+                setShowNewFolder(true);
+                setNewFolderParentId(parentId);
+              }}
+              getChildFolders={getChildFolders}
+              getNotesInFolder={getNotesInFolder}
+              searchQuery={searchQuery}
+              onReorderNote={reorderNote}
+              isDraggingRef={isDraggingRef}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Notes List */}
-      <Droppable droppableId="notes-list">
-        {(provided) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className="flex-1 overflow-y-auto p-4 space-y-2"
-          >
-            {filteredNotes.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No notes yet</p>
-              </div>
-            ) : (
-              filteredNotes.map((note, index) => (
-                <Draggable key={note.id} draggableId={note.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                    >
-                      <button
-                        onClick={() => setCurrentNote(note)}
-                        className={`w-full text-left p-3 rounded-lg transition-all ${
-                          currentNote?.id === note.id
-                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                            : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
-                        } ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-blue-400 rotate-2' : ''}`}
-                      >
-                        <div className="flex items-start gap-2">
-                          {note.type === 'note' && <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />}
-                          {note.type === 'whiteboard' && <PenTool className="h-4 w-4 mt-0.5 flex-shrink-0" />}
-                          {note.type === 'flashcard-set' && <BookOpen className="h-4 w-4 mt-0.5 flex-shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm truncate">{note.title}</h3>
-                            <p className={`text-xs mt-1 line-clamp-2 ${
-                              currentNote?.id === note.id ? 'text-blue-100' : 'text-gray-500'
-                            }`}>
-                              {note.description || 'No description'}
-                            </p>
-                            <p className={`text-xs mt-1 ${
-                              currentNote?.id === note.id ? 'text-blue-200' : 'text-gray-400'
-                            }`}>
-                              {new Date(note.updatedAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  )}
-                </Draggable>
-              ))
-            )}
-            {provided.placeholder}
-          </div>
-        )}
-      </Droppable>
 
       </aside>
     </DragDropContext>
