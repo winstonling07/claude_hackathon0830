@@ -49,7 +49,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase client
-    const supabase = createServerClient();
+    let supabase;
+    try {
+      supabase = createServerClient();
+    } catch (configError) {
+      console.error('Supabase configuration error:', configError);
+      return NextResponse.json(
+        { error: configError instanceof Error ? configError.message : 'Database not configured. Please check your Supabase environment variables.' },
+        { status: 500 }
+      );
+    }
 
     // Check if user already exists
     const { data: existingUser, error: checkError } = await supabase
@@ -93,8 +102,37 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error('Supabase insert error:', insertError);
+      
+      // Provide more specific error messages
+      if (insertError.code === '23505') {
+        // Unique constraint violation
+        return NextResponse.json(
+          { error: 'An account with this email already exists' },
+          { status: 409 }
+        );
+      }
+      
+      if (insertError.code === '42P01') {
+        // Table does not exist
+        return NextResponse.json(
+          { error: 'Database table not found. Please run the SQL schema in Supabase.' },
+          { status: 500 }
+        );
+      }
+      
+      if (insertError.code === 'PGRST301' || insertError.message?.includes('JWT')) {
+        // Authentication/authorization error
+        return NextResponse.json(
+          { error: 'Database connection error. Please check your Supabase configuration.' },
+          { status: 500 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to create account. Please try again.' },
+        { 
+          error: insertError.message || 'Failed to create account. Please try again.',
+          details: process.env.NODE_ENV === 'development' ? insertError : undefined
+        },
         { status: 500 }
       );
     }
@@ -112,8 +150,28 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Signup error:', error);
+    
+    // Check if it's a Supabase configuration error
+    if (error instanceof Error && error.message.includes('Supabase configuration')) {
+      return NextResponse.json(
+        { error: 'Database not configured. Please set up Supabase environment variables.' },
+        { status: 500 }
+      );
+    }
+    
+    // Check if it's a bcrypt error
+    if (error instanceof Error && error.message.includes('bcrypt')) {
+      return NextResponse.json(
+        { error: 'Password encryption failed. Please try again.' },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create account' },
+      { 
+        error: error instanceof Error ? error.message : 'Failed to create account',
+        details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+      },
       { status: 500 }
     );
   }

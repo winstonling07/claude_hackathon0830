@@ -46,12 +46,15 @@ export default function SignupFlow() {
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create account');
+        throw new Error(result.error || 'Failed to create account');
       }
 
-      const result = await response.json();
+      if (!result.success || !result.user) {
+        throw new Error(result.error || 'Account creation failed. Please try again.');
+      }
       
       // Save user to store and mark as authenticated
       setUser({
